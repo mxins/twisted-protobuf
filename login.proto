@@ -1,0 +1,13 @@
+// See README.txt for information and build instructions.
+syntax = "proto2";
+
+package msg;
+
+message LoginRequest {
+  required string user_name = 1;
+}
+
+message LoginResponse {
+  required bytes result = 1;
+  required string user_name = 2;
+}
