@@ -11,14 +11,14 @@ import login_pb2
 class PbProtocol(protocol.Protocol, policies.TimeoutMixin):
     BUFFER = ''
     timeOut = 500
-    const_format = 'IH'
-    header_length = struct.calcsize(const_format)
+    header_format = 'IH'
+    header_length = struct.calcsize(header_format)
     def connectionMade(self):
         self.transport.setTcpKeepAlive(True)
         self.setTimeout(self.timeOut)
         peer = self.transport.getPeer()
 
-        print 'Connection made. host, port:', peer.host, peer.port
+        log.msg( 'Connection made. host, port:', peer.host, peer.port)
 
     def dataReceived(self, data):
         self.resetTimeout()
@@ -27,10 +27,10 @@ class PbProtocol(protocol.Protocol, policies.TimeoutMixin):
         buffer_length = len(self.BUFFER)
         _l = ''
         while (buffer_length >= self.header_length):
-            len_pb_data, len_msg_name = struct.unpack(self.const_format, self.BUFFER[:self.header_length])#_bound.ParseFromString(self.BUFFER[:8])
+            len_pb_data, len_msg_name = struct.unpack(self.header_format, self.BUFFER[:self.header_length])#_bound.ParseFromString(self.BUFFER[:8])
             if len_msg_name:
                 if len_msg_name > len(self.BUFFER[self.header_length:]):
-                    print 'not enough buffer for msg name, wait for new data coming ...   '
+                    log.msg( 'not enough buffer for msg name, wait for new data coming ...   ')
                     break
                 else:
                     msg_name = struct.unpack('%ds'% len_msg_name,  self.BUFFER[self.header_length:len_msg_name + self.header_length])[0]
@@ -45,10 +45,10 @@ class PbProtocol(protocol.Protocol, policies.TimeoutMixin):
                             buffer_length = len(self.BUFFER) 
                             continue
                         else:   
-                            print 'not enough buffer for pb_data, waiting for new data coming ... '
+                            log.msg( 'not enough buffer for pb_data, waiting for new data coming ... ')
                             break
                     else:
-                        print 'no such message handler. detail:', _func, hasattr(login_pb2, msg_name), repr(self.BUFFER)
+                        log.msg( 'no such message handler. detail:', _func, hasattr(login_pb2, msg_name), repr(self.BUFFER))
                         if self.fromclient:
                             self.transport.loseConnection()
                         else:
@@ -56,7 +56,7 @@ class PbProtocol(protocol.Protocol, policies.TimeoutMixin):
 
                         return
             else:
-                print 'Un-supported message, no msg_name. detail:', len_msg_name
+                log.msg( 'Un-supported message, no msg_name. detail:', len_msg_name)
                 if self.fromclient:
                     self.transport.loseConnection()
                 else:
@@ -69,7 +69,7 @@ class PbProtocol(protocol.Protocol, policies.TimeoutMixin):
     def send(self, msg):
         if msg:
             pb_data = msg.SerializeToString()
-            _header = struct.pack(self.const_format + '%ds'%len(msg.__class__.__name__), len(pb_data), len(msg.__class__.__name__), msg.__class__.__name__)
+            _header = struct.pack(self.header_format + '%ds'%len(msg.__class__.__name__), len(pb_data), len(msg.__class__.__name__), msg.__class__.__name__)
             self.transport.write(_header + pb_data)
 
     def connectionLost(self, reason):
